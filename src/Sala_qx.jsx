@@ -50,50 +50,49 @@ function emptyLab()  { return { id:Date.now(), fecha:today(), valores:{} }; }
 
 // ─── CSS Global ───────────────────────────────────────────────────────────────
 const GLOBAL_CSS = `
-  @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: #0c0f1a; }
-  input, select, textarea, button { font-family: 'DM Sans', sans-serif; }
+  body { background: #0a0a0f; }
+  input, select, textarea, button { font-family: 'Plus Jakarta Sans', sans-serif; }
   button { transition: all 0.15s ease; cursor: pointer; }
-  button:hover { opacity: 0.88; transform: translateY(-1px); }
+  button:hover { opacity: 0.85; transform: translateY(-1px); }
   button:active { transform: translateY(0); }
-  ::-webkit-scrollbar { width: 6px; }
-  ::-webkit-scrollbar-track { background: #1a1f35; }
-  ::-webkit-scrollbar-thumb { background: #2d3555; border-radius: 3px; }
-  input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); }
+  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar-track { background: #111118; }
+  ::-webkit-scrollbar-thumb { background: #2a2a3a; border-radius: 4px; }
+  input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.5); }
   textarea { resize: vertical; }
-  
-  @keyframes fadeIn { from { opacity:0; transform: translateY(8px); } to { opacity:1; transform:translateY(0); } }
-  @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.6; } }
-  .fade-in { animation: fadeIn 0.2s ease forwards; }
+  select option { background: #1c1c28; color: #e2e2f0; }
+  @keyframes fadeIn { from { opacity:0; transform: translateY(6px); } to { opacity:1; transform:translateY(0); } }
+  .fade-in { animation: fadeIn 0.18s ease forwards; }
 `;
 
 // ─── Design Tokens ────────────────────────────────────────────────────────────
 const T = {
-  bg:       "#0c0f1a",
-  surface:  "#131729",
-  surface2: "#1a1f35",
-  surface3: "#212640",
-  border:   "#252a42",
-  border2:  "#2d3555",
-  text:     "#e8eaf6",
-  textMid:  "#8892b0",
-  textDim:  "#4a5278",
-  accent:   "#4f9eff",
-  accentDim:"#1a3a6b",
-  green:    "#34d399",
-  greenDim: "#0d3d2a",
-  amber:    "#fbbf24",
-  amberDim: "#3d2e00",
-  red:      "#f87171",
-  redDim:   "#3d1414",
-  purple:   "#a78bfa",
-  purpleDim:"#2d1f5e",
+  bg:        "#1C1B19",
+  surface:   "#242320",
+  surface2:  "#2C2B28",
+  surface3:  "#353431",
+  border:    "#403E3A",
+  border2:   "#4D4A45",
+  text:      "#F4F1EB",
+  textMid:   "#C0BBB2",
+  textDim:   "#8E887F",
+  accent:    "#D97757",
+  accentDim: "#4B2A21",
+  green:     "#7AA88A",
+  greenDim:  "#223428",
+  amber:     "#C99A43",
+  amberDim:  "#3D2D13",
+  red:       "#C86B6B",
+  redDim:    "#3A1C1C",
+  purple:    "#B49AC7",
+  purpleDim: "#35263F",
 };
 
 // ─── Estilos ──────────────────────────────────────────────────────────────────
 const S = {
-  app:  { minHeight:"100vh", background:T.bg, fontFamily:"'DM Sans',sans-serif", color:T.text },
+  app:  { minHeight:"100vh", background:T.bg, fontFamily:"'Plus Jakarta Sans',sans-serif", color:T.text },
   hdr:  {
     background:T.surface,
     borderBottom:`1px solid ${T.border}`,
@@ -101,7 +100,7 @@ const S = {
     display:"flex", alignItems:"center", justifyContent:"space-between",
     height:56, position:"sticky", top:0, zIndex:200,
   },
-  logo: { fontFamily:"'Syne',sans-serif", fontWeight:800, fontSize:16, color:T.text, display:"flex", alignItems:"center", gap:8 },
+  logo: { fontFamily:"'Plus Jakarta Sans',sans-serif", fontWeight:800, fontSize:16, color:T.text, display:"flex", alignItems:"center", gap:8 },
   logoAccent: { color: T.accent },
   wrap: { maxWidth:860, margin:"0 auto", padding:"24px 16px" },
   card: {
@@ -240,7 +239,7 @@ function FormPaciente({ init, onSave, onCancel }) {
     <div style={S.wrap}>
       <div style={{display:"flex",gap:10,alignItems:"center",marginBottom:20}}>
         <button onClick={onCancel} style={S.btn("ghost")}>← Volver</button>
-        <h2 style={{margin:0,fontSize:20,fontWeight:800,fontFamily:"'Syne',sans-serif"}}>{isEdit?"Editar paciente":"Nuevo paciente"}</h2>
+        <h2 style={{margin:0,fontSize:20,fontWeight:800,fontFamily:"'Plus Jakarta Sans',sans-serif"}}>{isEdit?"Editar paciente":"Nuevo paciente"}</h2>
       </div>
       <div style={S.card}>
         <div style={{padding:"16px 20px 0"}}><Tabs tabs={tabs} active={tab} onChange={setTab}/></div>
@@ -371,7 +370,7 @@ function FormEvolucion({ init, onSave, onCancel }) {
   return (
     <div style={{...S.card, border:`1.5px solid ${T.purple}40`, marginBottom:12}}>
       <div style={{padding:"13px 18px",background:T.purpleDim+"60",borderBottom:`1px solid ${T.border}`,display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8}}>
-        <span style={{fontWeight:700,fontSize:15,color:T.purple,fontFamily:"'Syne',sans-serif"}}>📓 Evolución diaria</span>
+        <span style={{fontWeight:700,fontSize:15,color:T.purple,fontFamily:"'Plus Jakarta Sans',sans-serif"}}>📓 Evolución diaria</span>
         <input type="date" style={{...S.inp,width:"auto"}} value={e.fecha} onChange={up("fecha")} {...inpFocus}/>
       </div>
       <div style={{padding:18}}>
@@ -475,7 +474,7 @@ function FormLab({ init, onSave, onCancel }) {
   return (
     <div style={{...S.card,border:`1.5px solid ${T.accent}40`,marginBottom:12}}>
       <div style={{padding:"13px 18px",background:T.accentDim+"66",borderBottom:`1px solid ${T.border}`,display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8}}>
-        <span style={{fontWeight:700,fontSize:15,color:T.accent,fontFamily:"'Syne',sans-serif"}}>🧪 Nuevo laboratorio</span>
+        <span style={{fontWeight:700,fontSize:15,color:T.accent,fontFamily:"'Plus Jakarta Sans',sans-serif"}}>🧪 Nuevo laboratorio</span>
         <input type="date" style={{...S.inp,width:"auto"}} value={lab.fecha} onChange={e=>setLab(p=>({...p,fecha:e.target.value}))} {...inpFocus}/>
       </div>
       <div style={{padding:18}}>
@@ -599,7 +598,7 @@ function DetallePaciente({ patient, onBack, onEdit, onArchivar, onToggleInd, onD
         <div style={{padding:"20px 22px"}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:12}}>
             <div>
-              <div style={{fontSize:24,fontWeight:800,fontFamily:"'Syne',sans-serif",marginBottom:6}}>{patient.nombre}</div>
+              <div style={{fontSize:24,fontWeight:800,fontFamily:"'Plus Jakarta Sans',sans-serif",marginBottom:6}}>{patient.nombre}</div>
               <div style={{fontSize:13,color:T.textMid,display:"flex",flexWrap:"wrap",gap:8,alignItems:"center"}}>
                 <span>🛏 Cama {patient.cama}</span>
                 <span style={{color:T.border2}}>·</span>
@@ -913,13 +912,13 @@ export default function App() {
         {/* Stats */}
         <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12,marginBottom:26}}>
           {[
-            {label:"Pacientes activos", val:active.length,                              c:T.accent,  icon:"👥"},
-            {label:"Pendientes hoy",    val:indHoy.length,                              c:T.amber,   icon:"📋"},
-            {label:"Alta prioridad",    val:active.filter(p=>p.prioridad==="Alta").length, c:T.red,  icon:"🔴"},
+            {label:"Pacientes activos", val:active.length,                                 c:T.accent, icon:"👥"},
+            {label:"Pendientes hoy",    val:indHoy.length,                                 c:T.amber,  icon:"📋"},
+            {label:"Alta prioridad",    val:active.filter(p=>p.prioridad==="Alta").length, c:T.red,    icon:"🔴"},
           ].map(it=>(
-            <div key={it.label} style={{background:T.surface,borderRadius:14,padding:"16px 18px",border:`1px solid ${T.border}`,borderTop:`2px solid ${it.c}`}}>
-              <div style={{fontSize:32,fontWeight:800,color:it.c,fontFamily:"'Syne',sans-serif",lineHeight:1}}>{it.val}</div>
-              <div style={{fontSize:11,color:T.textMid,marginTop:6,fontWeight:500}}>{it.icon} {it.label}</div>
+            <div key={it.label} style={{background:T.surface,borderRadius:14,padding:"18px 16px",border:`1px solid ${T.border}`,borderLeft:`3px solid ${it.c}`,display:"flex",flexDirection:"column",gap:6}}>
+              <div style={{fontSize:36,fontWeight:800,color:it.c,lineHeight:1,fontFamily:"'Plus Jakarta Sans',sans-serif"}}>{it.val}</div>
+              <div style={{fontSize:11,color:T.textMid,fontWeight:500,lineHeight:1.3}}>{it.icon} {it.label}</div>
             </div>
           ))}
         </div>
@@ -1032,7 +1031,7 @@ export default function App() {
               <div style={{padding:"14px 18px",display:"flex",alignItems:"flex-start",gap:12}}>
                 <div style={{flex:1}}>
                   <div style={{display:"flex",flexWrap:"wrap",alignItems:"center",gap:8,marginBottom:4}}>
-                    <span style={{fontWeight:800,fontSize:16,fontFamily:"'Syne',sans-serif",color:T.text}}>{p.nombre}</span>
+                    <span style={{fontWeight:800,fontSize:16,fontFamily:"'Plus Jakarta Sans',sans-serif",color:T.text}}>{p.nombre}</span>
                     <span style={S.badge(PRIO_C[p.prioridad][0],PRIO_C[p.prioridad][0]+"20")}>{p.prioridad}</span>
                     <span style={S.badge(TURNO_C[p.turno],TURNO_C[p.turno]+"20")}>{p.turno}</span>
                     <PopBadge p={p}/><AtbBadge p={p}/>
