@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
-const STORAGE_KEY = "pq_v4";
 const TURNO_C = { "Mañana":"#f59e0b","Tarde":"#0ea5e9","Noche":"#6366f1" };
 const PRIO_C  = { "Alta":["#ef4444","#fef2f2"],"Media":["#f59e0b","#fffbeb"],"Baja":["#22c55e","#f0fdf4"] };
 const TIPO_IND = ["Medicamento","Curación","Control","Examen","Ayuno","Movilización","Alta","Otro"];
@@ -825,46 +824,116 @@ function DetallePaciente({ patient, onBack, onEdit, onArchivar, onToggleInd, onD
   );
 }
 
+// ─── FIREBASE CONFIG ──────────────────────────────────────────────────────────
+// ⬇ PEGA AQUÍ TUS CREDENCIALES DE FIREBASE (paso 3)
+import { initializeApp } from "firebase/app";
+import { getFirestore, collection, doc, onSnapshot, setDoc, updateDoc, deleteDoc } from "firebase/firestore";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDZLWFMuQD83p0VQqmEM5qL-a6TukzTih0",
+  authDomain: "sala-qx.firebaseapp.com",
+  projectId: "sala-qx",
+  storageBucket: "sala-qx.firebasestorage.app",
+  messagingSenderId: "577910939499",
+  appId: "1:577910939499:web:c5216b51ad6749ae58762e"
+};
+
+const firebaseApp = initializeApp(firebaseConfig);
+const db = getFirestore(firebaseApp);
+const patientsCol = collection(db, "pacientes");
+
 // ─── APP ROOT ─────────────────────────────────────────────────────────────────
 export default function App() {
-  const [patients, setPatients] = useState(()=>{
-    try { return JSON.parse(localStorage.getItem(STORAGE_KEY))||[]; } catch { return []; }
-  });
+  const [patients, setPatients] = useState([]);
+  const [loading,  setLoading]  = useState(true);
   const [view,    setView]    = useState("hoy");
   const [selId,   setSelId]   = useState(null);
   const [formData,setFormData]= useState(null);
   const [filterDate, setFD]   = useState(today());
   const [search,  setSearch]  = useState("");
 
-  useEffect(()=>{ localStorage.setItem(STORAGE_KEY,JSON.stringify(patients)); },[patients]);
+  // Escuchar cambios en tiempo real desde Firebase
+  useEffect(()=>{
+    const unsub = onSnapshot(patientsCol, (snap)=>{
+      const data = snap.docs.map(d=>({...d.data(), id:d.id}));
+      setPatients(data);
+      setLoading(false);
+    });
+    return ()=>unsub();
+  },[]);
 
   const active = patients.filter(p=>!p.archivado);
-  const sel    = patients.find(p=>p.id===selId);
+  const sel    = patients.find(p=>p.id===String(selId));
 
   const openNew  = ()  => { setFormData({...emptyPatient()}); setView("form"); };
   const openEdit = (p) => { setFormData({...p,_exists:true}); setView("form"); };
 
-  const savePatient = (form) => {
+  const savePatient = async (form) => {
     if(!form.nombre.trim()) return;
     const {_exists,...clean}=form;
-    setPatients(ps=> ps.find(p=>p.id===clean.id) ? ps.map(p=>p.id===clean.id?clean:p) : [{...clean,id:Date.now()},...ps]);
+    const id = String(clean.id);
+    await setDoc(doc(db,"pacientes",id), {...clean, id});
+    setSelId(id);
     setView("detalle");
   };
-  const archivar    = (id) => { setPatients(ps=>ps.map(p=>p.id===id?{...p,archivado:true}:p)); setView("lista"); };
-  const toggleInd   = (pid,iid) => setPatients(ps=>ps.map(p=>p.id===pid?{...p,indicaciones:p.indicaciones.map(i=>i.id===iid?{...i,completado:!i.completado}:i)}:p));
-  const delInd      = (pid,iid) => setPatients(ps=>ps.map(p=>p.id===pid?{...p,indicaciones:p.indicaciones.filter(i=>i.id!==iid)}:p));
-  const addInd      = (pid,ind) => setPatients(ps=>ps.map(p=>p.id===pid?{...p,indicaciones:[...p.indicaciones,{...ind,id:Date.now()}]}:p));
-  const saveEv      = (pid,ev,mode) => setPatients(ps=>ps.map(p=>{
-    if(p.id!==pid) return p;
-    const evs=p.evoluciones||[];
-    return {...p, evoluciones: mode==="edit" ? evs.map(e=>e.id===ev.id?ev:e) : [...evs,{...ev,id:Date.now()}]};
-  }));
-  const saveLab     = (pid,lb,mode) => setPatients(ps=>ps.map(p=>{
-    if(p.id!==pid) return p;
-    const lbs=p.laboratorios||[];
-    return {...p, laboratorios: mode==="edit" ? lbs.map(l=>l.id===lb.id?lb:l) : [...lbs,{...lb,id:Date.now()}]};
-  }));
-  const delLab      = (pid,lid) => setPatients(ps=>ps.map(p=>p.id===pid?{...p,laboratorios:(p.laboratorios||[]).filter(l=>l.id!==lid)}:p));
+
+  const updatePatient = async (id, changes) => {
+    await updateDoc(doc(db,"pacientes",String(id)), changes);
+  };
+
+  const archivar = async (id) => {
+    await updatePatient(id, {archivado:true});
+    setView("lista");
+  };
+
+  const toggleInd = async (pid, iid) => {
+    const p = patients.find(x=>String(x.id)===String(pid));
+    if(!p) return;
+    const inds = p.indicaciones.map(i=>i.id===iid?{...i,completado:!i.completado}:i);
+    await updatePatient(pid, {indicaciones:inds});
+  };
+
+  const delInd = async (pid, iid) => {
+    const p = patients.find(x=>String(x.id)===String(pid));
+    if(!p) return;
+    await updatePatient(pid, {indicaciones:p.indicaciones.filter(i=>i.id!==iid)});
+  };
+
+  const addInd = async (pid, ind) => {
+    const p = patients.find(x=>String(x.id)===String(pid));
+    if(!p) return;
+    await updatePatient(pid, {indicaciones:[...(p.indicaciones||[]),{...ind,id:Date.now()}]});
+  };
+
+  const saveEv = async (pid, ev, mode) => {
+    const p = patients.find(x=>String(x.id)===String(pid));
+    if(!p) return;
+    const evs = p.evoluciones||[];
+    const updated = mode==="edit" ? evs.map(e=>e.id===ev.id?ev:e) : [...evs,{...ev,id:Date.now()}];
+    await updatePatient(pid, {evoluciones:updated});
+  };
+
+  const saveLab = async (pid, lb, mode) => {
+    const p = patients.find(x=>String(x.id)===String(pid));
+    if(!p) return;
+    const lbs = p.laboratorios||[];
+    const updated = mode==="edit" ? lbs.map(l=>l.id===lb.id?lb:l) : [...lbs,{...lb,id:Date.now()}];
+    await updatePatient(pid, {laboratorios:updated});
+  };
+
+  const delLab = async (pid, lid) => {
+    const p = patients.find(x=>String(x.id)===String(pid));
+    if(!p) return;
+    await updatePatient(pid, {laboratorios:(p.laboratorios||[]).filter(l=>l.id!==lid)});
+  };
+
+  if(loading) return (
+    <div style={{...S.app,display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:16}}>
+      <style>{GLOBAL_CSS}</style>
+      <div style={{fontSize:32}}>🏥</div>
+      <div style={{color:T.textMid,fontSize:14}}>Conectando con la base de datos…</div>
+    </div>
+  );
 
   const indHoy = active.flatMap(p=>
     (p.indicaciones||[]).filter(i=>!i.completado&&i.fecha===filterDate)
@@ -1059,7 +1128,7 @@ export default function App() {
       <FormPaciente
         init={formData}
         onSave={savePatient}
-        onCancel={()=>setView(patients.find(p=>p.id===formData.id)?"detalle":"lista")}
+        onCancel={()=>setView(patients.find(p=>String(p.id)===String(formData.id))?"detalle":"lista")}
       />
     </div>
   );
