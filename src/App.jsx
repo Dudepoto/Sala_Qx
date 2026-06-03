@@ -40,10 +40,24 @@ function emptyInd()  { return { id:Date.now(), tipo:"Medicamento", descripcion:"
 function emptyEv()   {
   return {
     id:Date.now(), fecha:today(),
+    // Anamnesis
+    bcg:true, hdn:true,
     regimen:"", regimenVelocidad:"",
     nauseas:false, vomitos:false, vomitosCantidad:"", vomitosTipo:[],
     dolor:"", dolorTendencia:"igual",
     diuresis:false, gases:false, deposiciones:false, deambulo:false,
+    // Drenajes
+    tieneDrenaje:false, drenajeTipo:"", drenajeDebito:"", drenajeCalidad:"",
+    // Examen físico
+    mucosaColor:"rosadas", mucosaHidratacion:"hidratadas",
+    lleneCapilar:"menor",
+    apremioResp:false,
+    uma:false,
+    mpPresente:true,
+    sra:true, sraComentario:"",
+    abdBlando:true, abdIndoloro:true, abdComentario:"",
+    irritacionPeritoneal:false,
+    eeiiMoviles:true, eeiiSimetricas:true, eeiiEdema:false, eeiiTvp:false,
     texto:"",
   };
 }
@@ -356,6 +370,16 @@ function FormPaciente({ init, onSave, onCancel }) {
   );
 }
 
+// ─── Componente de sección de evolución ──────────────────────────────────────
+function SeccionEv({ titulo, children }) {
+  return (
+    <div style={{marginBottom:20}}>
+      <div style={{fontSize:10,fontWeight:700,letterSpacing:"1.5px",color:T.textDim,textTransform:"uppercase",marginBottom:10,paddingBottom:6,borderBottom:`1px solid ${T.border}`}}>{titulo}</div>
+      {children}
+    </div>
+  );
+}
+
 // ─── Formulario Evolución ─────────────────────────────────────────────────────
 function FormEvolucion({ init, onSave, onCancel }) {
   const [e, setE] = useState(init);
@@ -368,49 +392,151 @@ function FormEvolucion({ init, onSave, onCancel }) {
   const needsVelocidad = REGIMEN_VELOCIDAD.includes(e.regimen);
   const inpFocus = { onFocus:ev=>ev.target.style.borderColor=T.purple, onBlur:ev=>ev.target.style.borderColor=T.border2 };
 
+  // Helper para selector de 3 opciones tipo radio visual
+  function TriSelect({ label, value, options, onChange }) {
+    return (
+      <div>
+        {label && <label style={S.lbl}>{label}</label>}
+        <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+          {options.map(o=>(
+            <button key={o.val} onClick={()=>onChange(o.val)} style={{
+              border:`1.5px solid ${value===o.val ? T.purple : T.border2}`,
+              background:value===o.val ? T.purpleDim : T.surface2,
+              color:value===o.val ? T.purple : T.textMid,
+              borderRadius:8, padding:"6px 12px", fontSize:12, fontWeight:600,
+            }}>{o.label}</button>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div style={{...S.card, border:`1.5px solid ${T.purple}40`, marginBottom:12}}>
+      {/* Header */}
       <div style={{padding:"13px 18px",background:T.purpleDim+"60",borderBottom:`1px solid ${T.border}`,display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8}}>
         <span style={{fontWeight:700,fontSize:15,color:T.purple,fontFamily:"'Plus Jakarta Sans',sans-serif"}}>📓 Evolución diaria</span>
         <input type="date" style={{...S.inp,width:"auto"}} value={e.fecha} onChange={up("fecha")} {...inpFocus}/>
       </div>
-      <div style={{padding:18}}>
-        <div style={{marginBottom:16}}>
-          <label style={S.lbl}>Régimen del día</label>
-          <select style={S.inp} value={e.regimen} onChange={up("regimen")} {...inpFocus}>
-            <option value="">— Seleccionar —</option>
-            {REGIMENES.map(r=><option key={r}>{r}</option>)}
-          </select>
-          {needsVelocidad && (
-            <div style={{marginTop:8}}>
-              <label style={S.lbl}>Velocidad de infusión</label>
-              <input style={S.inp} value={e.regimenVelocidad} onChange={up("regimenVelocidad")} placeholder="Ej: 40 cc/hr" {...inpFocus}/>
-            </div>
-          )}
-        </div>
 
-        <div style={{marginBottom:16}}>
-          <label style={S.lbl}>Síntomas digestivos</label>
-          <div style={{display:"flex",gap:10,flexWrap:"wrap",marginBottom:e.vomitos?10:0}}>
-            <BoolChip label="Náuseas" value={e.nauseas} onChange={upB("nauseas")}/>
-            <BoolChip label="Vómitos" value={e.vomitos} onChange={upB("vomitos")}/>
+      <div style={{padding:18}}>
+
+        {/* ── ANAMNESIS ── */}
+        <SeccionEv titulo="🩺 Anamnesis">
+
+          {/* BCG / HDN */}
+          <div style={{display:"flex",gap:10,flexWrap:"wrap",marginBottom:14}}>
+            <BoolChip label="BCG" value={e.bcg} onChange={upB("bcg")}/>
+            <BoolChip label="HDN autosostenida" value={e.hdn} onChange={upB("hdn")}/>
           </div>
-          {e.vomitos && (
-            <div style={{background:T.amberDim+"66",border:`1px solid ${T.amber}30`,borderRadius:10,padding:"12px 14px",marginTop:8}}>
+
+          {/* Régimen */}
+          <div style={{marginBottom:14}}>
+            <label style={S.lbl}>Régimen del día</label>
+            <select style={S.inp} value={e.regimen} onChange={up("regimen")} {...inpFocus}>
+              <option value="">— Seleccionar —</option>
+              {REGIMENES.map(r=><option key={r}>{r}</option>)}
+            </select>
+            {needsVelocidad && (
+              <div style={{marginTop:8}}>
+                <label style={S.lbl}>Velocidad de infusión</label>
+                <input style={S.inp} value={e.regimenVelocidad} onChange={up("regimenVelocidad")} placeholder="Ej: 40 cc/hr" {...inpFocus}/>
+              </div>
+            )}
+          </div>
+
+          {/* Náuseas / Vómitos */}
+          <div style={{marginBottom:14}}>
+            <label style={S.lbl}>Síntomas digestivos</label>
+            <div style={{display:"flex",gap:10,flexWrap:"wrap",marginBottom:e.vomitos?10:0}}>
+              <BoolChip label="Náuseas" value={e.nauseas} onChange={upB("nauseas")}/>
+              <BoolChip label="Vómitos" value={e.vomitos} onChange={upB("vomitos")}/>
+            </div>
+            {e.vomitos && (
+              <div style={{background:T.amberDim+"66",border:`1px solid ${T.amber}30`,borderRadius:10,padding:"12px 14px",marginTop:8}}>
+                <div style={S.grid2}>
+                  <div>
+                    <label style={S.lbl}>Número de vómitos</label>
+                    <input style={S.inp} type="number" min="1" value={e.vomitosCantidad} onChange={up("vomitosCantidad")} placeholder="Ej: 3" {...inpFocus}/>
+                  </div>
+                  <div>
+                    <label style={S.lbl}>Tipo de vómito</label>
+                    <div style={{display:"flex",gap:6,flexWrap:"wrap",marginTop:4}}>
+                      {TIPO_VOMITO.map(t=>(
+                        <button key={t} onClick={()=>toggleTipoVomito(t)} style={{
+                          border:`1.5px solid ${(e.vomitosTipo||[]).includes(t) ? T.amber : T.border2}`,
+                          background:(e.vomitosTipo||[]).includes(t) ? T.amberDim : T.surface2,
+                          color:(e.vomitosTipo||[]).includes(t) ? T.amber : T.textMid,
+                          borderRadius:7,padding:"5px 10px",fontSize:12,fontWeight:600,
+                        }}>{t}</button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Dolor */}
+          <div style={{marginBottom:14}}>
+            <label style={S.lbl}>Dolor</label>
+            <div style={{display:"flex",gap:10,alignItems:"flex-end",flexWrap:"wrap"}}>
+              <div style={{flex:1,minWidth:160}}>
+                <label style={S.lbl}>Zona / descripción</label>
+                <input style={S.inp} value={e.dolor} onChange={up("dolor")} placeholder="Ej: Herida operatoria…" {...inpFocus}/>
+              </div>
+              <div>
+                <label style={S.lbl}>vs ayer</label>
+                <TendBtn value={e.dolorTendencia} onChange={upB("dolorTendencia")}/>
+              </div>
+            </div>
+          </div>
+
+          {/* Recuperación funcional */}
+          <div style={{marginBottom:14}}>
+            <label style={S.lbl}>Recuperación funcional</label>
+            <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
+              <BoolChip label="💧 Diuresis"  value={e.diuresis}     onChange={upB("diuresis")}/>
+              <BoolChip label="💨 Gases"     value={e.gases}        onChange={upB("gases")}/>
+              <BoolChip label="🚽 Deposic."  value={e.deposiciones} onChange={upB("deposiciones")}/>
+              <BoolChip label="🚶 Deambuló"  value={e.deambulo}     onChange={upB("deambulo")}/>
+            </div>
+          </div>
+
+          {/* Drenajes */}
+          <div style={{marginBottom:4}}>
+            <label style={S.lbl}>Drenajes</label>
+            <BoolChip label="Tiene drenaje(s)" value={e.tieneDrenaje} onChange={upB("tieneDrenaje")}/>
+          </div>
+          {e.tieneDrenaje && (
+            <div style={{background:T.surface2,border:`1px solid ${T.border}`,borderRadius:10,padding:"12px 14px",marginTop:10}}>
               <div style={S.grid2}>
                 <div>
-                  <label style={S.lbl}>Número de vómitos</label>
-                  <input style={S.inp} type="number" min="1" value={e.vomitosCantidad} onChange={up("vomitosCantidad")} placeholder="Ej: 3" {...inpFocus}/>
+                  <label style={S.lbl}>Tipo de drenaje</label>
+                  <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                    {["Tubular","JP","Hemosucc"].map(t=>(
+                      <button key={t} onClick={()=>setE(p=>({...p,drenajeTipo:t}))} style={{
+                        border:`1.5px solid ${e.drenajeTipo===t ? T.accent : T.border2}`,
+                        background:e.drenajeTipo===t ? T.accentDim : T.surface3,
+                        color:e.drenajeTipo===t ? T.accent : T.textMid,
+                        borderRadius:7,padding:"5px 11px",fontSize:12,fontWeight:600,
+                      }}>{t}</button>
+                    ))}
+                  </div>
                 </div>
                 <div>
-                  <label style={S.lbl}>Tipo de vómito</label>
-                  <div style={{display:"flex",gap:6,flexWrap:"wrap",marginTop:4}}>
-                    {TIPO_VOMITO.map(t=>(
-                      <button key={t} onClick={()=>toggleTipoVomito(t)} style={{
-                        border:`1.5px solid ${(e.vomitosTipo||[]).includes(t) ? T.amber : T.border2}`,
-                        background:(e.vomitosTipo||[]).includes(t) ? T.amberDim : T.surface2,
-                        color:(e.vomitosTipo||[]).includes(t) ? T.amber : T.textMid,
-                        borderRadius:7,padding:"5px 10px",fontSize:12,fontWeight:600,
+                  <label style={S.lbl}>Débito</label>
+                  <input style={S.inp} value={e.drenajeDebito} onChange={up("drenajeDebito")} placeholder="Ej: 50 cc" {...inpFocus}/>
+                </div>
+                <div style={S.full}>
+                  <label style={S.lbl}>Calidad del débito</label>
+                  <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                    {["Seroso","Serohemático","Purulento","Quiloso"].map(t=>(
+                      <button key={t} onClick={()=>setE(p=>({...p,drenajeCalidad:t}))} style={{
+                        border:`1.5px solid ${e.drenajeCalidad===t ? T.amber : T.border2}`,
+                        background:e.drenajeCalidad===t ? T.amberDim : T.surface3,
+                        color:e.drenajeCalidad===t ? T.amber : T.textMid,
+                        borderRadius:7,padding:"5px 11px",fontSize:12,fontWeight:600,
                       }}>{t}</button>
                     ))}
                   </div>
@@ -418,36 +544,103 @@ function FormEvolucion({ init, onSave, onCancel }) {
               </div>
             </div>
           )}
-        </div>
+        </SeccionEv>
 
-        <div style={{marginBottom:16}}>
-          <label style={S.lbl}>Dolor</label>
-          <div style={{display:"flex",gap:10,alignItems:"flex-end",flexWrap:"wrap"}}>
-            <div style={{flex:1,minWidth:160}}>
-              <label style={S.lbl}>Zona / descripción</label>
-              <input style={S.inp} value={e.dolor} onChange={up("dolor")} placeholder="Ej: Herida operatoria…" {...inpFocus}/>
+        {/* ── EXAMEN FÍSICO ── */}
+        <SeccionEv titulo="🔍 Examen físico">
+
+          {/* Mucosas */}
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:14}}>
+            <TriSelect
+              label="Mucosas — color"
+              value={e.mucosaColor}
+              onChange={v=>setE(p=>({...p,mucosaColor:v}))}
+              options={[
+                {val:"pálidas",label:"Pálidas"},
+                {val:"levemente pálidas",label:"Lev. pálidas"},
+                {val:"rosadas",label:"Rosadas"},
+              ]}
+            />
+            <TriSelect
+              label="Mucosas — hidratación"
+              value={e.mucosaHidratacion}
+              onChange={v=>setE(p=>({...p,mucosaHidratacion:v}))}
+              options={[
+                {val:"deshidratadas",label:"Deshidratadas"},
+                {val:"levemente deshidratadas",label:"Lev. deshidratadas"},
+                {val:"hidratadas",label:"Hidratadas"},
+              ]}
+            />
+          </div>
+
+          {/* Llene capilar */}
+          <div style={{marginBottom:14}}>
+            <TriSelect
+              label="Llene capilar"
+              value={e.lleneCapilar}
+              onChange={v=>setE(p=>({...p,lleneCapilar:v}))}
+              options={[
+                {val:"menor",label:"< 2 seg"},
+                {val:"igual",label:"= 2 seg"},
+                {val:"mayor",label:"> 2 seg"},
+              ]}
+            />
+          </div>
+
+          {/* Apremio resp / UMA / MP */}
+          <div style={{display:"flex",gap:10,flexWrap:"wrap",marginBottom:14}}>
+            <BoolChip label="Apremio respiratorio" value={e.apremioResp} onChange={upB("apremioResp")}/>
+            <BoolChip label="UMA" value={e.uma} onChange={upB("uma")}/>
+            <BoolChip label="MP presente" value={e.mpPresente} onChange={upB("mpPresente")}/>
+          </div>
+
+          {/* SRA */}
+          <div style={{marginBottom:14}}>
+            <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:e.sra?0:8}}>
+              <label style={{...S.lbl,margin:0}}>SRA</label>
+              <BoolChip label="Sin signos de SRA" value={e.sra} onChange={upB("sra")}/>
             </div>
-            <div>
-              <label style={S.lbl}>vs ayer</label>
-              <TendBtn value={e.dolorTendencia} onChange={upB("dolorTendencia")}/>
+            {!e.sra && (
+              <div style={{marginTop:8}}>
+                <textarea rows={2} style={S.inp} value={e.sraComentario} onChange={up("sraComentario")} placeholder="Describe los signos de SRA…" {...inpFocus}/>
+              </div>
+            )}
+          </div>
+
+          {/* Abdomen */}
+          <div style={{marginBottom:14}}>
+            <label style={S.lbl}>Abdomen</label>
+            <div style={{display:"flex",gap:10,flexWrap:"wrap",marginBottom:8}}>
+              <BoolChip label="Blando y depresible" value={e.abdBlando} onChange={upB("abdBlando")}/>
+              <BoolChip label="Indoloro" value={e.abdIndoloro} onChange={upB("abdIndoloro")}/>
+            </div>
+            {(!e.abdBlando || !e.abdIndoloro) && (
+              <textarea rows={2} style={S.inp} value={e.abdComentario} onChange={up("abdComentario")} placeholder="Describe hallazgos abdominales…" {...inpFocus}/>
+            )}
+          </div>
+
+          {/* Irritación peritoneal */}
+          <div style={{marginBottom:14}}>
+            <BoolChip label="⚠ Signos de irritación peritoneal" value={e.irritacionPeritoneal} onChange={upB("irritacionPeritoneal")}/>
+          </div>
+
+          {/* EEII */}
+          <div>
+            <label style={S.lbl}>EEII</label>
+            <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
+              <BoolChip label="Móviles"     value={e.eeiiMoviles}    onChange={upB("eeiiMoviles")}/>
+              <BoolChip label="Simétricas"  value={e.eeiiSimetricas} onChange={upB("eeiiSimetricas")}/>
+              <BoolChip label="Edema"       value={e.eeiiEdema}      onChange={upB("eeiiEdema")}/>
+              <BoolChip label="Signos TVP"  value={e.eeiiTvp}        onChange={upB("eeiiTvp")}/>
             </div>
           </div>
-        </div>
 
-        <div style={{marginBottom:16}}>
-          <label style={S.lbl}>Recuperación funcional</label>
-          <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
-            <BoolChip label="💧 Diuresis"  value={e.diuresis}     onChange={upB("diuresis")}/>
-            <BoolChip label="💨 Gases"     value={e.gases}        onChange={upB("gases")}/>
-            <BoolChip label="🚽 Deposic."  value={e.deposiciones} onChange={upB("deposiciones")}/>
-            <BoolChip label="🚶 Deambuló"  value={e.deambulo}     onChange={upB("deambulo")}/>
-          </div>
-        </div>
+        </SeccionEv>
 
-        <div style={{marginBottom:16}}>
-          <label style={S.lbl}>Notas de evolución</label>
-          <textarea rows={4} style={S.inp} value={e.texto} onChange={up("texto")} placeholder="Evolución clínica, indicaciones, plan…" {...inpFocus}/>
-        </div>
+        {/* ── NOTAS LIBRES ── */}
+        <SeccionEv titulo="📝 Notas adicionales">
+          <textarea rows={4} style={S.inp} value={e.texto} onChange={up("texto")} placeholder="Evolución clínica, plan, indicaciones…" {...inpFocus}/>
+        </SeccionEv>
 
         <div style={{display:"flex",gap:10}}>
           <button onClick={()=>onSave(e)} style={S.btn("purple")}>Guardar evolución</button>
@@ -810,12 +1003,22 @@ function DetallePaciente({ patient, onBack, onEdit, onArchivar, onToggleInd, onD
                         <button onClick={()=>setEditEvId(ev.id)} style={{...S.btn("ghost"),padding:"4px 10px",fontSize:12}}>Editar</button>
                       </div>
                       <div style={{padding:"12px 16px"}}>
+
+                        {/* BCG / HDN */}
+                        <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:8}}>
+                          <span style={S.tag(ev.bcg!==false?T.green:T.red)}>{ev.bcg!==false?"✓":"✗"} BCG</span>
+                          <span style={S.tag(ev.hdn!==false?T.green:T.red)}>{ev.hdn!==false?"✓":"✗"} HDN</span>
+                        </div>
+
+                        {/* Régimen */}
                         {ev.regimen && (
                           <div style={{marginBottom:8}}>
                             <span style={S.tag(T.accent)}>🍽 {ev.regimen}</span>
                             {ev.regimenVelocidad && <span style={S.tag(T.purple)}>⚡ {ev.regimenVelocidad}</span>}
                           </div>
                         )}
+
+                        {/* Síntomas y funcional */}
                         <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:8}}>
                           <span style={S.tag(ev.nauseas?T.amber:T.textDim)}>{ev.nauseas?"✓":"○"} Náuseas</span>
                           <span style={S.tag(ev.vomitos?T.red:T.textDim)}>{ev.vomitos?"✓":"○"} Vómitos{ev.vomitos&&ev.vomitosCantidad?" x"+ev.vomitosCantidad:""}{ev.vomitos&&ev.vomitosTipo&&ev.vomitosTipo.length>0?" ("+ev.vomitosTipo.join(", ")+")":""}</span>
@@ -824,13 +1027,47 @@ function DetallePaciente({ patient, onBack, onEdit, onArchivar, onToggleInd, onD
                           <span style={S.tag(ev.deposiciones?T.green:T.textDim)}>{ev.deposiciones?"✓":"○"} 🚽 Deposic.</span>
                           <span style={S.tag(ev.deambulo?T.green:T.textDim)}>{ev.deambulo?"✓":"○"} 🚶 Deambuló</span>
                         </div>
+
+                        {/* Dolor */}
                         {ev.dolor && (
                           <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}>
                             <span style={{fontSize:13,color:T.textMid}}>🩺 Dolor: <b style={{color:T.text}}>{ev.dolor}</b></span>
                             <TendIcon v={ev.dolorTendencia}/>
                           </div>
                         )}
-                        {ev.texto && <div style={{background:T.surface2,borderRadius:8,padding:"10px 12px",fontSize:13,lineHeight:1.6,whiteSpace:"pre-wrap",color:T.textMid,border:`1px solid ${T.border}`}}>{ev.texto}</div>}
+
+                        {/* Drenaje */}
+                        {ev.tieneDrenaje && (
+                          <div style={{marginBottom:8}}>
+                            <span style={S.tag(T.amber)}>🩹 Drenaje {ev.drenajeTipo}</span>
+                            {ev.drenajeDebito && <span style={S.tag(T.textMid)}>📏 {ev.drenajeDebito}</span>}
+                            {ev.drenajeCalidad && <span style={S.tag(T.textMid)}>{ev.drenajeCalidad}</span>}
+                          </div>
+                        )}
+
+                        {/* Ex físico resumen */}
+                        <div style={{display:"flex",flexWrap:"wrap",gap:5,marginBottom:8}}>
+                          <span style={S.tag(T.textMid)}>Mucosas {ev.mucosaColor||"rosadas"}, {ev.mucosaHidratacion||"hidratadas"}</span>
+                          <span style={S.tag(ev.lleneCapilar==="mayor"?T.red:T.green)}>LC {ev.lleneCapilar==="menor"?"< 2s":ev.lleneCapilar==="igual"?"= 2s":"> 2s"}</span>
+                          {ev.apremioResp && <span style={S.tag(T.red)}>⚠ Apremio resp.</span>}
+                          {ev.uma && <span style={S.tag(T.amber)}>UMA</span>}
+                          <span style={S.tag(ev.mpPresente!==false?T.green:T.red)}>{ev.mpPresente!==false?"✓":"✗"} MP</span>
+                          <span style={S.tag(ev.sra!==false?T.green:T.amber)}>{ev.sra!==false?"Sin SRA":"Con SRA"}</span>
+                          <span style={S.tag(ev.irritacionPeritoneal?T.red:T.green)}>{ev.irritacionPeritoneal?"⚠ Irritación peritoneal":"Sin irritación peritoneal"}</span>
+                        </div>
+                        {!ev.sra && ev.sraComentario && <div style={{fontSize:12,color:T.amber,marginBottom:6}}>SRA: {ev.sraComentario}</div>}
+                        {(!ev.abdBlando||!ev.abdIndoloro) && ev.abdComentario && <div style={{fontSize:12,color:T.amber,marginBottom:6}}>Abd: {ev.abdComentario}</div>}
+
+                        {/* EEII */}
+                        <div style={{display:"flex",flexWrap:"wrap",gap:5,marginBottom:8}}>
+                          <span style={S.tag(T.textDim)}>EEII:</span>
+                          <span style={S.tag(ev.eeiiMoviles!==false?T.green:T.red)}>{ev.eeiiMoviles!==false?"Móviles":"No móviles"}</span>
+                          <span style={S.tag(ev.eeiiSimetricas!==false?T.green:T.amber)}>{ev.eeiiSimetricas!==false?"Simétricas":"Asimétricas"}</span>
+                          {ev.eeiiEdema && <span style={S.tag(T.amber)}>Con edema</span>}
+                          {ev.eeiiTvp && <span style={S.tag(T.red)}>⚠ Signos TVP</span>}
+                        </div>
+
+                        {ev.texto && <div style={{background:T.surface2,borderRadius:8,padding:"10px 12px",fontSize:13,lineHeight:1.6,whiteSpace:"pre-wrap",color:T.textMid,border:`1px solid ${T.border}`,marginTop:4}}>{ev.texto}</div>}
                       </div>
                     </div>
                   )}
