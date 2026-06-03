@@ -9,10 +9,12 @@ const REGIMEN_VELOCIDAD = ["NPT (Parenteral)","NE (Enteral)"];
 const TIPO_VOMITO = ["Alimenticio","Bilioso","Fecaloideo","Claro"];
 const LABS_DEFAULT = [
   "Hemoglobina","Hematocrito","Leucocitos","Plaquetas",
-  "Creatinina","BUN","Sodio","Potasio","Cloro",
-  "PCR","Procalcitonina","Bilirrubina total","Bilirrubina directa",
-  "GOT","GPT","GGT","Amilasa","Lipasa","Albúmina","Proteínas totales",
-  "INR","TTPK","Glucosa","Lactato","pH","pCO2","pO2","HCO3"
+  "Creatinina","BUN","Urea","Sodio","Potasio","Cloro","Fósforo","Magnesio",
+  "PCR","Procalcitonina",
+  "Bilirrubina total","Bilirrubina directa","Bilirrubina indirecta",
+  "GOT","GPT","GGT","Fosfatasa alcalina","Amilasa","Lipasa","Albúmina","Proteínas totales",
+  "INR","TTPK","TP","Glucosa","Lactato","pH","pCO2","pO2","HCO3",
+  "Vitamina D",
 ];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -456,10 +458,81 @@ function FormEvolucion({ init, onSave, onCancel }) {
   );
 }
 
+// ─── Parser de texto de laboratorio ──────────────────────────────────────────
+// Mapeo de abreviaciones a nombres completos del sistema
+const LAB_ALIAS = {
+  // Glucosa
+  "glucosa":"Glucosa","gluc":"Glucosa","glu":"Glucosa",
+  // Creatinina
+  "crea":"Creatinina","creat":"Creatinina","creatinina":"Creatinina","cr":"Creatinina",
+  // BUN / Urea
+  "bun":"BUN","urea":"Urea",
+  // PCR
+  "pcr":"PCR",
+  // Electrolitos
+  "na":"Sodio","sodio":"Sodio",
+  "k":"Potasio","potasio":"Potasio",
+  "cl":"Cloro","cloro":"Cloro",
+  "p":"Fósforo","fosforo":"Fósforo","fósforo":"Fósforo","phosphorus":"Fósforo",
+  "mg":"Magnesio","magnesio":"Magnesio","mag":"Magnesio",
+  // Hemograma
+  "hb":"Hemoglobina","hgb":"Hemoglobina","hemoglobina":"Hemoglobina",
+  "hcto":"Hematocrito","hto":"Hematocrito","hematocrito":"Hematocrito",
+  "gb":"Leucocitos","leucocitos":"Leucocitos","wbc":"Leucocitos","glob":"Leucocitos",
+  "plaq":"Plaquetas","plaquetas":"Plaquetas","plt":"Plaquetas",
+  // Hepáticos / Bilirrubinas
+  "fa":"Fosfatasa alcalina","fosfatasa alcalina":"Fosfatasa alcalina","alp":"Fosfatasa alcalina",
+  "bd":"Bilirrubina directa","bilirrubina directa":"Bilirrubina directa",
+  "bi":"Bilirrubina indirecta","bilirrubina indirecta":"Bilirrubina indirecta",
+  "bt":"Bilirrubina total","bilirrubina total":"Bilirrubina total",
+  "ggt":"GGT","got":"GOT","ast":"GOT","gpt":"GPT","alt":"GPT",
+  "amilasa":"Amilasa","lipasa":"Lipasa",
+  "albumina":"Albúmina","albúmina":"Albúmina","alb":"Albúmina",
+  "proteinas totales":"Proteínas totales","prot":"Proteínas totales",
+  // Coagulación
+  "inr":"INR","ttpk":"TTPK","ttpa":"TTPK","tp":"TP","tpro":"TP","tprotrombina":"TP",
+  // Vitaminas / Otros
+  "vitd":"Vitamina D","vit d":"Vitamina D","vitamina d":"Vitamina D","25ohd":"Vitamina D",
+  "procalcitonina":"Procalcitonina","pct":"Procalcitonina",
+  "lactato":"Lactato","lac":"Lactato",
+  "ph":"pH","pco2":"pCO2","po2":"pO2","hco3":"HCO3",
+};
+
+function parsearLabTexto(texto) {
+  const resultado = {};
+  if(!texto.trim()) return resultado;
+
+  // Primero eliminar valores entre paréntesis (son valores anteriores, no actuales)
+  // Ej: "Na: 139.1 (138.2)" → conserva solo "139.1"
+  // También maneja: "TP: 10.2 seg | 78.4% (77.0%)" → conserva "10.2 seg | 78.4%"
+  const textoLimpio = texto.replace(/\([\d.,\s%]+\)/g, "").replace(/\s{2,}/g," ");
+
+  // Regex que captura: CLAVE: VALOR (con unidades opcionales y pipes)
+  const regex = /([A-Za-záéíóúÁÉÍÓÚüÜñÑ\s]+?)\s*:\s*([\d.,]+\s*(?:seg|%|mEq\/L|mg\/dL|g\/dL|u\/L|UI\/L|mmHg|mmol\/L)?(?:\s*\|\s*[\d.,]+\s*%?)?)/gi;
+
+  let match;
+  while((match = regex.exec(textoLimpio)) !== null) {
+    const rawKey    = match[1].trim().toLowerCase().replace(/\s+/g," ");
+    const rawVal    = match[2].trim();
+    if(!rawVal || rawVal === "") continue;
+    const mappedKey = LAB_ALIAS[rawKey];
+    if(mappedKey) {
+      resultado[mappedKey] = rawVal;
+    } else {
+      const capKey = rawKey.charAt(0).toUpperCase() + rawKey.slice(1);
+      resultado[capKey] = rawVal;
+    }
+  }
+  return resultado;
+}
+
 // ─── Formulario Laboratorio ───────────────────────────────────────────────────
 function FormLab({ init, onSave, onCancel }) {
-  const [lab, setLab] = useState(init);
+  const [lab, setLab]       = useState(init);
   const [custom, setCustom] = useState("");
+  const [textoLab, setTextoLab] = useState("");
+  const [parseMsg, setParseMsg] = useState("");
+
   const setVal = (k,v) => setLab(p=>({...p, valores:{...p.valores,[k]:v}}));
   const addCustom = () => {
     const t = custom.trim();
@@ -470,6 +543,18 @@ function FormLab({ init, onSave, onCancel }) {
   const removeParam = (k) => setLab(p=>{ const v={...p.valores}; delete v[k]; return {...p,valores:v}; });
   const inpFocus = { onFocus:e=>e.target.style.borderColor=T.accent, onBlur:e=>e.target.style.borderColor=T.border2 };
 
+  const aplicarTexto = () => {
+    const parsed = parsearLabTexto(textoLab);
+    const count  = Object.keys(parsed).length;
+    if(count === 0) {
+      setParseMsg("⚠ No se reconoció ningún valor. Revisa el formato (ej: Glucosa: 149)");
+      return;
+    }
+    setLab(p=>({...p, valores:{...p.valores, ...parsed}}));
+    setParseMsg(`✓ Se cargaron ${count} valores automáticamente`);
+    setTextoLab("");
+  };
+
   return (
     <div style={{...S.card,border:`1.5px solid ${T.accent}40`,marginBottom:12}}>
       <div style={{padding:"13px 18px",background:T.accentDim+"66",borderBottom:`1px solid ${T.border}`,display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8}}>
@@ -477,12 +562,42 @@ function FormLab({ init, onSave, onCancel }) {
         <input type="date" style={{...S.inp,width:"auto"}} value={lab.fecha} onChange={e=>setLab(p=>({...p,fecha:e.target.value}))} {...inpFocus}/>
       </div>
       <div style={{padding:18}}>
-        <p style={{fontSize:12,color:T.textMid,marginBottom:14}}>Completa solo los exámenes realizados.</p>
+
+        {/* ── SECCIÓN PEGAR TEXTO ── */}
+        <div style={{background:T.surface2,border:`1.5px solid ${T.accent}40`,borderRadius:12,padding:"14px 16px",marginBottom:20}}>
+          <div style={{fontWeight:700,fontSize:13,color:T.accent,marginBottom:6}}>⚡ Pegar resultados en texto</div>
+          <div style={{fontSize:12,color:T.textMid,marginBottom:10,lineHeight:1.6}}>
+            Pega el texto con los resultados en el formato <b style={{color:T.text}}>Clave: Valor</b> y se llenarán los recuadros automáticamente.<br/>
+            <span style={{color:T.textDim}}>Ej: Glucosa: 149  Crea: 1.84  Na: 129.7  Hb: 12.9  INR: 1.11</span>
+          </div>
+          <textarea
+            rows={4}
+            style={{...S.inp, marginBottom:10, fontSize:13, lineHeight:1.6}}
+            value={textoLab}
+            onChange={e=>{ setTextoLab(e.target.value); setParseMsg(""); }}
+            placeholder={"Glucosa: 149  Crea: 1.84  BUN: 81.31  Urea: 174\nPCR: 29.80  Na: 129.7  K: 3.45  Cl: 93.4\nHb: 12.9  Hcto: 36.7%  GB: 8.73  Plaq: 423\nGOT: 27.4  GPT: 37  GGT: 27.3  INR: 1.11  TTPK: 28.8"}
+            onFocus={e=>e.target.style.borderColor=T.accent}
+            onBlur={e=>e.target.style.borderColor=T.border2}
+          />
+          <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
+            <button onClick={aplicarTexto} style={S.btn("primary")}>⚡ Cargar valores</button>
+            <button onClick={()=>{setTextoLab("");setParseMsg("");}} style={S.btn("ghost")}>Limpiar</button>
+            {parseMsg && (
+              <span style={{fontSize:12,fontWeight:600,color:parseMsg.startsWith("✓")?T.green:T.amber}}>
+                {parseMsg}
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* ── RECUADROS INDIVIDUALES ── */}
+        <p style={{fontSize:12,color:T.textMid,marginBottom:14}}>O completa manualmente los recuadros:</p>
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(190px,1fr))",gap:10,marginBottom:16}}>
           {LABS_DEFAULT.map(k=>(
             <div key={k}>
               <label style={S.lbl}>{k}</label>
-              <input style={S.inp} value={lab.valores[k]||""} onChange={e=>setVal(k,e.target.value)} placeholder="valor" {...inpFocus}/>
+              <input style={{...S.inp, borderColor: lab.valores[k] ? T.accent+"80" : T.border2}}
+                value={lab.valores[k]||""} onChange={e=>setVal(k,e.target.value)} placeholder="valor" {...inpFocus}/>
             </div>
           ))}
           {Object.keys(lab.valores).filter(k=>!LABS_DEFAULT.includes(k)).map(k=>(
@@ -491,7 +606,8 @@ function FormLab({ init, onSave, onCancel }) {
                 <label style={S.lbl}>{k}</label>
                 <button onClick={()=>removeParam(k)} style={{background:"none",border:"none",cursor:"pointer",color:T.red,fontSize:14,padding:0}}>✕</button>
               </div>
-              <input style={S.inp} value={lab.valores[k]||""} onChange={e=>setVal(k,e.target.value)} placeholder="valor" {...inpFocus}/>
+              <input style={{...S.inp, borderColor: T.accent+"80"}}
+                value={lab.valores[k]||""} onChange={e=>setVal(k,e.target.value)} placeholder="valor" {...inpFocus}/>
             </div>
           ))}
         </div>
@@ -953,7 +1069,7 @@ export default function App() {
     <header style={S.hdr}>
       <div style={S.logo}>
         <span style={{fontSize:22}}>🏥</span>
-        <span>Pos<span style={S.logoAccent}>Quirúrgico</span></span>
+        <span>Sala<span style={S.logoAccent}>Cirugía</span></span>
       </div>
       <nav style={{display:"flex",gap:6}}>
         <button style={S.navB(activeView==="hoy")}   onClick={()=>setView("hoy")}>Hoy</button>
